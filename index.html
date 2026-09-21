@@ -1,67 +1,1026 @@
-var GOOGLE_CLIENT_ID = "367774841695-pouk3gj8h6jqhjdhi39j7ofrhnvaknjb.apps.googleusercontent.com";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consultation & SOAP Audio Collection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#F7F6F2;
+    --panel:#FFFFFF;
+    --ink:#1C2431;
+    --ink-soft:#5B6472;
+    --border:#DEDAD0;
+    --teal:#2B6777;
+    --teal-dark:#204F5C;
+    --red:#B0413E;
+    --red-soft:#F3E3E2;
+    --green:#4C7A50;
+    --green-soft:#E7EFE3;
+    --amber-soft:#FBF1DE;
+    --amber:#8A6416;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.serif{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .shell{
+    max-width:720px;
+    margin:0 auto;
+    padding:40px 20px 80px;
+  }
+  header.app-header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:28px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:18px;
+  }
+  header.app-header h1{
+    font-size:1.3rem;
+    margin:0;
+  }
+  header.app-header .session-id{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+  }
 
-var ALLOWED_EMAILS = [
-  "shailendra@xlairs.com"
-];
+  .steps-track{
+    display:flex;
+    gap:6px;
+    margin-bottom:32px;
+  }
+  .steps-track .dot{
+    flex:1;
+    height:4px;
+    border-radius:2px;
+    background:var(--border);
+    position:relative;
+  }
+  .steps-track .dot.done{background:var(--teal);}
+  .steps-track .dot.active{background:var(--teal-dark);}
 
-function verifyGoogleEmail(idToken) {
-  if (!idToken) return null;
-  try {
-    var resp = UrlFetchApp.fetch(
-      'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken),
-      { muteHttpExceptions: true }
-    );
-    if (resp.getResponseCode() !== 200) return null;
-    var payload = JSON.parse(resp.getContentText());
-    if (GOOGLE_CLIENT_ID && payload.aud !== GOOGLE_CLIENT_ID) return null;
-    if (payload.exp && Number(payload.exp) < (Date.now() / 1000)) return null;
-    return payload.email ? payload.email.toLowerCase() : null;
-  } catch (err) {
+  .step-meta{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:6px;
+  }
+  .step-meta .step-num{
+    font-size:0.78rem;
+    color:var(--teal-dark);
+    font-weight:600;
+  }
+  .step-meta .step-count{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:32px;
+  }
+  .panel h2{
+    font-size:1.5rem;
+    margin:0 0 8px;
+  }
+  .panel .sub{
+    color:var(--ink-soft);
+    font-size:0.95rem;
+    margin:0 0 24px;
+    line-height:1.5;
+  }
+
+  label{
+    display:block;
+    font-size:0.85rem;
+    font-weight:500;
+    margin-bottom:6px;
+    color:var(--ink);
+  }
+  input[type=text], select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-size:0.95rem;
+    font-family:inherit;
+    margin-bottom:18px;
+    background:#fff;
+    color:var(--ink);
+  }
+  input[type=text]:focus, select:focus{
+    outline:2px solid var(--teal);
+    outline-offset:1px;
+    border-color:var(--teal);
+  }
+  .field-hint{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    margin-top:-14px;
+    margin-bottom:18px;
+  }
+
+  .consent-box{
+    background:var(--amber-soft);
+    border:1px solid #E6D6A8;
+    border-radius:8px;
+    padding:20px;
+    font-size:0.95rem;
+    line-height:1.65;
+    color:#4A3B12;
+    margin-bottom:20px;
+    white-space:pre-wrap;
+  }
+  .consent-box .es-label{
+    font-size:0.72rem;
+    text-transform:none;
+    color:var(--amber);
+    font-weight:600;
+    margin-bottom:8px;
+    display:block;
+  }
+
+  .checkline{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:14px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-bottom:20px;
+    cursor:pointer;
+  }
+  .checkline input{margin-top:3px;}
+  .checkline span{font-size:0.9rem; line-height:1.5;}
+  .checkline .ts{display:block; font-size:0.75rem; color:var(--green); margin-top:4px; font-weight:500;}
+
+  .rec-panel{
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:24px;
+    text-align:center;
+    margin-bottom:20px;
+    background:#FCFBF9;
+  }
+  .rec-indicator{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-size:0.85rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:18px;
+  }
+  .rec-dot{
+    width:10px;height:10px;border-radius:50%;
+    background:var(--ink-soft);
+  }
+  .rec-indicator.live .rec-dot{
+    background:var(--red);
+    animation:pulse 1.2s infinite;
+  }
+  .rec-indicator.live{color:var(--red);}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(176,65,62,0.5);}
+    70%{box-shadow:0 0 0 10px rgba(176,65,62,0);}
+    100%{box-shadow:0 0 0 0 rgba(176,65,62,0);}
+  }
+  .timer{
+    font-family:'Source Serif 4', serif;
+    font-size:2.6rem;
+    margin:6px 0 20px;
+    color:var(--ink);
+  }
+  .rec-controls{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+  }
+  .rec-btn{
+    border:none;
+    border-radius:50%;
+    width:76px;height:76px;
+    background:var(--red);
+    color:#fff;
+    font-size:1.6rem;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    transition:transform 0.15s ease;
+  }
+  .rec-btn:hover{transform:scale(1.05);}
+  .rec-btn:active{transform:scale(0.97);}
+  .rec-btn.stop{background:var(--ink);}
+  .rec-btn.secondary{
+    width:56px;height:56px;
+    font-size:1.2rem;
+    background:#fff;
+    color:var(--ink);
+    border:1.5px solid var(--border);
+  }
+  .rec-btn.secondary:hover{background:#F1F0EC;}
+  audio{width:100%; margin-top:16px;}
+  .redo-row{
+    display:flex;
+    justify-content:center;
+    margin-top:14px;
+  }
+  .link-btn{
+    background:none;
+    border:none;
+    color:var(--teal-dark);
+    font-family:inherit;
+    font-size:0.85rem;
+    font-weight:600;
+    cursor:pointer;
+    padding:6px 4px;
+  }
+  .link-btn:hover{text-decoration:underline;}
+
+  @media (max-width:480px){
+    .shell{padding:24px 14px 60px;}
+    .panel{padding:22px;}
+    button.btn{width:100%; padding:14px 20px; font-size:0.95rem;}
+    .actions{flex-direction:column-reverse; gap:10px;}
+    .rec-btn{width:84px; height:84px; font-size:1.8rem;}
+    .timer{font-size:2.2rem;}
+  }
+
+  .soap-guide{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .soap-guide div{
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px 12px;
+    font-size:0.82rem;
+    color:var(--ink-soft);
+  }
+  .soap-guide b{color:var(--teal-dark); display:block; font-size:0.78rem; margin-bottom:3px;}
+
+  .summary-row{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid var(--border);
+    font-size:0.9rem;
+  }
+  .summary-row:last-child{border-bottom:none;}
+  .summary-row span:first-child{color:var(--ink-soft);}
+  .summary-row span:last-child{font-weight:500; text-align:right;}
+
+  .qc-list label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:400;
+    font-size:0.9rem;
+    margin-bottom:14px;
+    cursor:pointer;
+  }
+
+  .actions{
+    display:flex;
+    justify-content:space-between;
+    margin-top:28px;
+  }
+  button.btn{
+    font-family:inherit;
+    font-size:0.9rem;
+    font-weight:600;
+    padding:11px 22px;
+    border-radius:6px;
+    border:1px solid transparent;
+    cursor:pointer;
+  }
+  button.btn.primary{background:var(--teal-dark); color:#fff;}
+  button.btn.primary:disabled{background:#B9C4C8; cursor:not-allowed;}
+  button.btn.ghost{background:transparent; color:var(--ink-soft); border-color:var(--border);}
+  button.btn.primary:hover:not(:disabled){background:var(--teal);}
+
+  .note{
+    font-size:0.8rem;
+    color:var(--ink-soft);
+    background:#F1F0EC;
+    border-radius:6px;
+    padding:12px 14px;
+    margin-top:20px;
+    line-height:1.5;
+  }
+  .note b{color:var(--ink);}
+
+  .done-screen{text-align:center; padding:20px 0;}
+  .done-screen .check{
+    width:56px;height:56px;border-radius:50%;
+    background:var(--green-soft);
+    color:var(--green);
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.6rem;
+    margin:0 auto 18px;
+  }
+  .file-list{
+    text-align:left;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 18px;
+    margin:20px 0;
+    font-size:0.85rem;
+  }
+  .file-list div{padding:6px 0; display:flex; justify-content:space-between; border-bottom:1px solid var(--border);}
+  .file-list div:last-child{border-bottom:none;}
+  .file-list a{color:var(--teal-dark); text-decoration:none; font-weight:500;}
+
+  .signin-screen{text-align:center; padding:30px 10px;}
+  .signin-screen h2{margin:0 0 8px;}
+  .signin-screen .sub{color:var(--ink-soft); font-size:0.95rem; margin:0 0 26px; line-height:1.5;}
+  #gSignInDiv{display:flex; justify-content:center;}
+  .signed-in-row{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.78rem; color:var(--ink-soft);
+    background:#F1F0EC; border-radius:6px; padding:8px 12px; margin-bottom:18px;
+  }
+  .signed-in-row button{
+    background:none; border:none; color:var(--teal-dark); font-weight:600;
+    font-size:0.78rem; cursor:pointer; font-family:inherit;
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="app-header">
+    <h1>Consultation &amp; SOAP Recorder</h1>
+    <span class="session-id" id="sessionIdLabel">Session not started</span>
+  </header>
+
+  <div class="steps-track" id="stepsTrack"></div>
+
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+// ===== ONE-TIME SETUP FOR YOUR COORDINATOR =====
+// Paste the Google Apps Script Web App URL here after deploying it (see setup guide).
+// Leave as empty string if not set up yet — the tool will still work, it just
+// won't auto-fill a spreadsheet, and will remind the doctor to log details manually.
+const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzYcrn4IuhpU9I9errFv-sB6ddqsybLllZMB3d2S0e1IzLsxkxObCLfUw0T_Nrndod-/exec";
+
+// Optional: paste a shared Google Drive folder link here so doctors have a
+// one-click way to open the right folder for uploading audio files.
+const DRIVE_FOLDER_URL = "";
+
+// Paste your Google OAuth Client ID here (from Google Cloud Console) so
+// doctors have to sign in with their Google account before starting a
+// session, and their verified email is attached to every submission.
+// Leave as empty string to skip sign-in entirely (not recommended).
+const GOOGLE_CLIENT_ID = "367774841695-pouk3gj8h6jqhjdhi39j7ofrhnvaknjb.apps.googleusercontent.com";
+// ================================================
+
+const STEP_TITLES = ["Session details", "Patient consent", "Record consultation", "Record SOAP note", "Review & check", "Package for handoff"];
+let state = {
+  step: 0,
+  doctorId: "",
+  visitId: "",
+  specialty: "",
+  doctorEmail: "",
+  googleIdToken: "",
+  consentGiven: false,
+  consentTimestamp: null,
+  consultBlob: null,
+  consultDuration: 0,
+  soapBlob: null,
+  soapDuration: 0,
+  qc: { audioUsable: false, soapComplete: false, noIdentifiers: false },
+  audioUploadConfirmed: false
+};
+
+function genVisitId(){
+  const d = new Date();
+  const rand = Math.random().toString(36).slice(2,7).toUpperCase();
+  return `V-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${rand}`;
+}
+
+function renderTrack(){
+  const track = document.getElementById('stepsTrack');
+  track.innerHTML = STEP_TITLES.map((_,i)=>{
+    let cls = 'dot';
+    if(i < state.step) cls += ' done';
+    if(i === state.step) cls += ' active';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+}
+
+function stepMeta(){
+  return `<div class="step-meta"><span class="step-num">STEP ${state.step+1} — ${STEP_TITLES[state.step].toUpperCase()}</span><span class="step-count">${state.step+1} of ${STEP_TITLES.length}</span></div>`;
+}
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// Chrome/Edge often write inaccurate (or Infinity) duration metadata into
+// webm files produced by MediaRecorder. Seeking to a huge timestamp forces
+// the browser to rescan the file and fix its internal duration, after which
+// we seek back to the start. This only affects the player's own duration
+// readout — it doesn't touch the recording itself.
+function fixAudioDuration(audioEl){
+  if(!audioEl) return;
+  const trySeek = () => {
+    audioEl.currentTime = 1e101;
+    audioEl.addEventListener('timeupdate', function onTick(){
+      audioEl.removeEventListener('timeupdate', onTick);
+      audioEl.currentTime = 0;
+    });
+  };
+  if(audioEl.readyState > 0){
+    trySeek();
+  }else{
+    audioEl.addEventListener('loadedmetadata', trySeek, { once: true });
+  }
+}
+
+function goTo(step){ state.step = step; render(); }
+
+function render(){
+  renderTrack();
+  document.getElementById('sessionIdLabel').textContent = state.visitId ? `Visit ${state.visitId}` : 'Session not started';
+  saveProgress();
+  const panel = document.getElementById('panel');
+
+  if(state.step === 0) return renderSetup(panel);
+  if(state.step === 1) return renderConsent(panel);
+  if(state.step === 2) return renderRecord(panel, 'consult');
+  if(state.step === 3) return renderRecord(panel, 'soap');
+  if(state.step === 4) return renderReview(panel);
+  if(state.step === 5) return renderPackage(panel);
+}
+
+// ---------- Sign-in gate ----------
+function decodeJwtPayload(token){
+  try{
+    const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(decodeURIComponent(atob(base64).split('').map(c =>
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join('')));
+  }catch(err){
     return null;
   }
 }
 
-function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var verifiedEmail = verifyGoogleEmail(data.googleIdToken);
-
-  if (!verifiedEmail || ALLOWED_EMAILS.indexOf(verifiedEmail) === -1) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'forbidden',
-      message: 'This Google account is not approved for this project.'
-    })).setMimeType(ContentService.MimeType.JSON);
+function handleCredentialResponse(response){
+  const payload = decodeJwtPayload(response.credential);
+  if(!payload || !payload.email){
+    alert('Sign-in did not return an email address. Please try again.');
+    return;
   }
-
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
-  if (!sheet) {
-    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Submissions');
-  }
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      'Submitted At', 'Doctor Email (verified)', 'Doctor ID', 'Visit ID', 'Specialty',
-      'Consent Confirmed At', 'Consultation Duration (sec)', 'SOAP Duration (sec)',
-      'QC: Audio Usable', 'QC: SOAP Complete', 'QC: No Identifiers Spoken',
-      'Audio Uploaded Confirmed', 'Consultation Filename', 'SOAP Filename'
-    ]);
-  }
-
-  sheet.appendRow([
-    new Date(),
-    verifiedEmail,
-    data.doctorId,
-    data.visitId,
-    data.specialty,
-    data.consentConfirmedAt,
-    data.consultDurationSeconds,
-    data.soapDurationSeconds,
-    data.qc.audioUsable,
-    data.qc.soapComplete,
-    data.qc.noIdentifiers,
-    !!data.audioUploadConfirmed,
-    data.consultFilename,
-    data.soapFilename
-  ]);
-
-  return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  state.doctorEmail = payload.email;
+  state.googleIdToken = response.credential;
+  maybeOfferResume();
+  render();
 }
+
+function renderSignIn(){
+  const panel = document.getElementById('panel');
+  document.getElementById('stepsTrack').innerHTML = '';
+  panel.innerHTML = `
+    <div class="signin-screen">
+      <h2>Sign in to begin</h2>
+      <p class="sub">Sign in with your Google account so this session can be attributed to you. Your email is only used for tracking which sessions were submitted by whom.</p>
+      <div id="gSignInDiv"></div>
+    </div>
+  `;
+  initGoogleButton();
+}
+
+function initGoogleButton(attempt){
+  attempt = attempt || 0;
+  if(typeof google === 'undefined' || !google.accounts || !google.accounts.id){
+    if(attempt > 100){
+      const div = document.getElementById('gSignInDiv');
+      if(div) div.innerHTML = '<p style="color:var(--red); font-size:0.85rem;">Sign-in failed to load. Please check your internet connection and refresh the page.</p>';
+      return;
+    }
+    setTimeout(() => initGoogleButton(attempt + 1), 100);
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse
+  });
+  const div = document.getElementById('gSignInDiv');
+  if(div){
+    google.accounts.id.renderButton(div, {
+      theme: 'outline', size: 'large', width: 280
+    });
+  }
+}
+
+function signOut(){
+  state.doctorEmail = "";
+  state.googleIdToken = "";
+  state.step = 0;
+  clearProgress();
+  boot();
+}
+
+function boot(){
+  if(GOOGLE_CLIENT_ID.trim().length > 0 && !state.doctorEmail){
+    renderSignIn();
+    return;
+  }
+  maybeOfferResume();
+  render();
+}
+
+// ---------- Step 0: Setup ----------
+function renderSetup(panel){
+  panel.innerHTML = `
+    ${stepMeta()}
+    ${state.doctorEmail ? `<div class="signed-in-row"><span>Signed in as <b>${state.doctorEmail}</b></span><button id="signOutBtn">Sign out</button></div>` : ''}
+    <h2>Start a new session</h2>
+    <p class="sub">Enter session details before recording begins. Never enter the patient's name anywhere in this tool — recordings and files are identified only by doctor ID and visit ID.</p>
+
+    <label for="doctorId">Doctor ID</label>
+    <input type="text" id="doctorId" placeholder="e.g. DR-0142" value="${state.doctorId}">
+    <div class="field-hint">Your assigned contractor ID, not your name.</div>
+
+    <label for="visitId">Visit ID</label>
+    <input type="text" id="visitId" value="${state.visitId || genVisitId()}">
+    <div class="field-hint">Auto-generated. You can edit it if your coordinator gave you a specific ID to use.</div>
+
+    <label for="specialty">Specialty</label>
+    <select id="specialty">
+      <option value="">Select specialty</option>
+      <option ${state.specialty==='General practice'?'selected':''}>General practice</option>
+      <option ${state.specialty==='Pediatrics'?'selected':''}>Pediatrics</option>
+      <option ${state.specialty==='Internal medicine'?'selected':''}>Internal medicine</option>
+      <option ${state.specialty==='Dermatology'?'selected':''}>Dermatology</option>
+      <option ${state.specialty==='Psychiatry'?'selected':''}>Psychiatry</option>
+      <option ${state.specialty==='Other'?'selected':''}>Other</option>
+    </select>
+
+    <div class="note"><b>Before you continue:</b> confirm today's date is within your active consent-collection window and that this patient has not asked to be excluded from recording.</div>
+
+    <div class="actions">
+      <span></span>
+      <button class="btn primary" id="nextBtn">Continue to consent</button>
+    </div>
+  `;
+  document.getElementById('nextBtn').onclick = () => {
+    state.doctorId = document.getElementById('doctorId').value.trim();
+    state.visitId = document.getElementById('visitId').value.trim();
+    state.specialty = document.getElementById('specialty').value;
+    if(!state.doctorId || !state.visitId || !state.specialty){
+      alert('Please fill in doctor ID, visit ID, and specialty before continuing.');
+      return;
+    }
+    goTo(1);
+  };
+  const signOutBtn = document.getElementById('signOutBtn');
+  if(signOutBtn) signOutBtn.onclick = signOut;
+}
+
+// ---------- Step 1: Consent ----------
+const CONSENT_SCRIPT = `Antes de comenzar, quiero informarle que esta consulta se grabará en audio con fines de investigación, para entrenar sistemas de inteligencia artificial en el ámbito sanitario.
+
+La grabación será anonimizada: se eliminará su nombre y cualquier otro dato que pueda identificarle antes de que la información salga de nuestro sistema.
+
+Su participación es totalmente voluntaria y no afecta en absoluto a la atención médica que recibirá. Si prefiere no ser grabado, puede decirlo ahora y continuaremos la consulta sin grabar.
+
+También puede solicitar que se excluya esta grabación en cualquier momento antes del [fecha límite], sin necesidad de dar ninguna explicación.
+
+¿Está de acuerdo en que grabemos esta consulta?`;
+
+function renderConsent(panel){
+  panel.innerHTML = `
+    ${stepMeta()}
+    <h2>Read the consent script aloud</h2>
+    <p class="sub">Read this to the patient before recording starts, in full, in a normal speaking voice. Their spoken agreement should be the first thing captured on the recording in the next step.</p>
+
+    <div class="consent-box">
+      <span class="es-label">Spanish · consent script</span>
+      ${CONSENT_SCRIPT}
+    </div>
+
+    <label class="checkline" for="consentCheck">
+      <input type="checkbox" id="consentCheck" ${state.consentGiven ? 'checked' : ''}>
+      <span>
+        I read this script to the patient in full, and they gave verbal agreement to be recorded.
+        ${state.consentTimestamp ? `<span class="ts">Confirmed at ${state.consentTimestamp}</span>` : ''}
+      </span>
+    </label>
+
+    <div class="note">If the patient declines, do not proceed to recording. Continue the consultation normally and note the decline with your coordinator — no further action needed in this tool.</div>
+
+    <div class="actions">
+      <button class="btn ghost" id="backBtn">Back</button>
+      <button class="btn primary" id="nextBtn" ${state.consentGiven ? '' : 'disabled'}>Continue to recording</button>
+    </div>
+  `;
+  document.getElementById('backBtn').onclick = () => goTo(0);
+  const checkbox = document.getElementById('consentCheck');
+  const nextBtn = document.getElementById('nextBtn');
+  checkbox.onchange = () => {
+    state.consentGiven = checkbox.checked;
+    if(state.consentGiven && !state.consentTimestamp){
+      state.consentTimestamp = new Date().toLocaleTimeString();
+    }
+    if(!state.consentGiven){ state.consentTimestamp = null; }
+    render();
+  };
+  nextBtn.onclick = () => goTo(2);
+}
+
+// ---------- Steps 2 & 3: Recording ----------
+let mediaRecorder = null, chunks = [], recTimerInterval = null, recSeconds = 0, activeStream = null,
+    isPaused = false;
+
+function renderRecord(panel, kind){
+  const isConsult = kind === 'consult';
+  const blob = isConsult ? state.consultBlob : state.soapBlob;
+  const duration = isConsult ? state.consultDuration : state.soapDuration;
+  const hasRecording = !!blob;
+
+  panel.innerHTML = `
+    ${stepMeta()}
+    <h2>${isConsult ? 'Record the consultation' : 'Dictate the SOAP note'}</h2>
+    <p class="sub">${isConsult
+      ? 'Start recording once the patient has agreed. Speak and consult normally — this captures the full doctor–patient conversation.'
+      : 'Now dictate your SOAP note for this visit. Speak each section clearly so it can be transcribed accurately.'}</p>
+
+    ${!isConsult ? `
+    <div class="soap-guide">
+      <div><b>S — Subjective</b>What the patient reports</div>
+      <div><b>O — Objective</b>Exam findings, vitals</div>
+      <div><b>A — Assessment</b>Diagnosis or impression</div>
+      <div><b>P — Plan</b>Treatment and follow-up</div>
+    </div>` : ''}
+
+    <div class="rec-panel">
+      <div class="rec-indicator" id="recIndicator"><span class="rec-dot"></span><span id="recLabel">Ready to record</span></div>
+      <div class="timer" id="recTimer">${hasRecording ? fmtTime(duration) : '00:00'}</div>
+      <div class="rec-controls" id="recControls">
+        <button class="rec-btn" id="recBtn" title="${hasRecording ? 'Re-record' : 'Start recording'}">${hasRecording ? '↻' : '●'}</button>
+      </div>
+      ${hasRecording ? `<audio controls id="recAudio" src="${URL.createObjectURL(blob)}"></audio>
+      <div class="redo-row"><button class="link-btn" id="redoBtn">Discard and record again</button></div>` : ''}
+    </div>
+
+    <div class="note"><b>Filename on save:</b> ${state.doctorId || 'DR-XXX'}_${state.visitId || 'V-XXXX'}_${kind}.webm — no patient name is ever used.</div>
+
+    <div class="actions">
+      <button class="btn ghost" id="backBtn">Back</button>
+      <button class="btn primary" id="nextBtn" ${hasRecording ? '' : 'disabled'}>Continue</button>
+    </div>
+  `;
+
+  document.getElementById('backBtn').onclick = () => goTo(isConsult ? 1 : 2);
+  document.getElementById('nextBtn').onclick = () => goTo(isConsult ? 3 : 4);
+
+  if(hasRecording){
+    document.getElementById('redoBtn').onclick = () => {
+      if(!confirm('Discard this recording and record again? This cannot be undone.')) return;
+      if(isConsult){ state.consultBlob = null; state.consultDuration = 0; }
+      else{ state.soapBlob = null; state.soapDuration = 0; }
+      render();
+    };
+    fixAudioDuration(document.getElementById('recAudio'));
+  }
+
+  function finalizeRecording(){
+    const fullBlob = new Blob(chunks, { type: 'audio/webm' });
+    if(isConsult){ state.consultBlob = fullBlob; state.consultDuration = recSeconds; }
+    else{ state.soapBlob = fullBlob; state.soapDuration = recSeconds; }
+    if(activeStream) activeStream.getTracks().forEach(t => t.stop());
+    clearInterval(recTimerInterval);
+    isPaused = false;
+    render();
+  }
+
+  function tickTimer(){
+    recTimerInterval = setInterval(() => {
+      recSeconds++;
+      const timerEl = document.getElementById('recTimer');
+      if(timerEl) timerEl.textContent = fmtTime(recSeconds);
+    }, 1000);
+  }
+
+  document.getElementById('recBtn').onclick = async () => {
+    const inProgress = mediaRecorder && (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused');
+    if(inProgress){
+      clearInterval(recTimerInterval);
+      mediaRecorder.stop();
+      return;
+    }
+    try{
+      activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }catch(err){
+      alert('Microphone access is required to record. Please allow microphone permission and try again.');
+      return;
+    }
+    chunks = [];
+    recSeconds = 0;
+    isPaused = false;
+    mediaRecorder = new MediaRecorder(activeStream);
+    mediaRecorder.ondataavailable = e => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = finalizeRecording;
+    mediaRecorder.start();
+
+    document.getElementById('recIndicator').classList.add('live');
+    document.getElementById('recLabel').textContent = 'Recording';
+    document.getElementById('recBtn').textContent = '■';
+    document.getElementById('recBtn').classList.add('stop');
+    document.getElementById('recBtn').title = 'Stop recording';
+
+    const controls = document.getElementById('recControls');
+    const pauseBtn = document.createElement('button');
+    pauseBtn.className = 'rec-btn secondary';
+    pauseBtn.id = 'pauseBtn';
+    pauseBtn.title = 'Pause';
+    pauseBtn.textContent = '❚❚';
+    pauseBtn.onclick = () => {
+      if(!isPaused){
+        mediaRecorder.pause();
+        isPaused = true;
+        clearInterval(recTimerInterval);
+        document.getElementById('recLabel').textContent = 'Paused';
+        document.getElementById('recIndicator').classList.remove('live');
+        pauseBtn.textContent = '▶';
+        pauseBtn.title = 'Resume recording';
+      }else{
+        mediaRecorder.resume();
+        isPaused = false;
+        pauseBtn.textContent = '❚❚';
+        pauseBtn.title = 'Pause';
+        document.getElementById('recLabel').textContent = 'Recording';
+        document.getElementById('recIndicator').classList.add('live');
+        tickTimer();
+      }
+    };
+    controls.appendChild(pauseBtn);
+
+    tickTimer();
+  };
+}
+
+// ---------- Step 4: Review & QC ----------
+function renderReview(panel){
+  panel.innerHTML = `
+    ${stepMeta()}
+    <h2>Review before packaging</h2>
+    <p class="sub">Quick self-check before this session moves to transcription. Listen back if you're unsure about any item.</p>
+
+    ${state.doctorEmail ? `<div class="summary-row"><span>Signed in as</span><span>${state.doctorEmail}</span></div>` : ''}
+    <div class="summary-row"><span>Doctor ID</span><span>${state.doctorId}</span></div>
+    <div class="summary-row"><span>Visit ID</span><span>${state.visitId}</span></div>
+    <div class="summary-row"><span>Specialty</span><span>${state.specialty}</span></div>
+    <div class="summary-row"><span>Consent confirmed</span><span>${state.consentTimestamp}</span></div>
+    <div class="summary-row"><span>Consultation recording</span><span>${state.consultBlob ? fmtTime(state.consultDuration) : 'Missing'}</span></div>
+    <div class="summary-row"><span>SOAP recording</span><span>${state.soapBlob ? fmtTime(state.soapDuration) : 'Missing'}</span></div>
+
+    <div class="qc-list" style="margin-top:24px;">
+      <label><input type="checkbox" id="qc1" ${state.qc.audioUsable?'checked':''}> Both recordings are clear and audible</label>
+      <label><input type="checkbox" id="qc2" ${state.qc.soapComplete?'checked':''}> SOAP dictation covers all four sections (S/O/A/P)</label>
+      <label><input type="checkbox" id="qc3" ${state.qc.noIdentifiers?'checked':''}> I did not say the patient's name, DOB, or address on the recording</label>
+    </div>
+
+    <div class="note">If the patient's name was mentioned on the recording, that's fine to flag here — it will be redacted at transcription. Just check honestly rather than leaving it unchecked.</div>
+
+    <div class="actions">
+      <button class="btn ghost" id="backBtn">Back</button>
+      <button class="btn primary" id="nextBtn">Continue to packaging</button>
+    </div>
+  `;
+  document.getElementById('backBtn').onclick = () => goTo(3);
+  ['qc1','qc2','qc3'].forEach((id,i) => {
+    document.getElementById(id).onchange = (e) => {
+      const keys = ['audioUsable','soapComplete','noIdentifiers'];
+      state.qc[keys[i]] = e.target.checked;
+    };
+  });
+  document.getElementById('nextBtn').onclick = () => {
+    if(!state.consultBlob || !state.soapBlob){
+      alert('Both recordings are required before packaging. Please go back and complete any missing steps.');
+      return;
+    }
+    goTo(5);
+  };
+}
+
+// ---------- Step 5: Package ----------
+function renderPackage(panel){
+  const metadata = {
+    doctorId: state.doctorId,
+    doctorEmail: state.doctorEmail,
+    googleIdToken: state.googleIdToken,
+    visitId: state.visitId,
+    specialty: state.specialty,
+    consentConfirmedAt: state.consentTimestamp,
+    consultDurationSeconds: state.consultDuration,
+    soapDurationSeconds: state.soapDuration,
+    qc: state.qc,
+    audioUploadConfirmed: state.audioUploadConfirmed,
+    packagedAt: new Date().toISOString()
+  };
+  const metaBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+  const consultUrl = URL.createObjectURL(state.consultBlob);
+  const soapUrl = URL.createObjectURL(state.soapBlob);
+  const metaUrl = URL.createObjectURL(metaBlob);
+
+  const base = `${state.doctorId}_${state.visitId}`;
+  const consultFilename = `${base}_consultation.webm`;
+  const soapFilename = `${base}_soap.webm`;
+  const sheetConfigured = SHEET_WEBHOOK_URL.trim().length > 0;
+
+  panel.innerHTML = `
+    ${stepMeta()}
+    <div class="done-screen">
+      <div class="check">✓</div>
+      <h2>Session ready</h2>
+      <p class="sub">Two steps to finish: upload the audio files to Drive yourself, and submit the session details below so they're logged automatically.</p>
+    </div>
+
+    <div class="file-list">
+      <div><span>${consultFilename}</span><a href="${consultUrl}" download="${consultFilename}">Download</a></div>
+      <div><span>${soapFilename}</span><a href="${soapUrl}" download="${soapFilename}">Download</a></div>
+      <div><span>${base}_metadata.json</span><a href="${metaUrl}" download="${base}_metadata.json">Download</a></div>
+    </div>
+
+    <div class="note">
+      <b>Step 1 — Upload audio to Drive:</b> download the two audio files above, then upload them yourself to the shared Drive folder.
+      ${DRIVE_FOLDER_URL ? `<br><a href="${DRIVE_FOLDER_URL}" target="_blank" rel="noopener" style="color:var(--teal-dark); font-weight:600;">Open the Drive folder →</a>` : ' Ask your coordinator for the folder link if you don\'t have it.'}
+    </div>
+
+    <div class="note" style="margin-top:10px;">
+      <b>Step 2 — Log the session:</b> click "Submit session details" below to automatically add this visit's details to the tracking spreadsheet. This does not send the audio itself — only the visit ID, timings, and checklist answers.
+    </div>
+
+    <div class="qc-list" style="margin-top:18px;">
+      <label><input type="checkbox" id="uploadConfirm" ${state.audioUploadConfirmed ? 'checked' : ''}> I have uploaded both audio files to the Drive folder</label>
+    </div>
+
+    <div id="submitArea" style="margin-top:18px;"></div>
+
+    <div class="actions">
+      <button class="btn ghost" id="backBtn">Back</button>
+      <button class="btn primary" id="newBtn">Start next session</button>
+    </div>
+  `;
+  document.getElementById('uploadConfirm').onchange = (e) => {
+    state.audioUploadConfirmed = e.target.checked;
+    metadata.audioUploadConfirmed = state.audioUploadConfirmed;
+    const updatedMetaBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+    const metaLink = document.querySelector(`a[download="${base}_metadata.json"]`);
+    if(metaLink) metaLink.href = URL.createObjectURL(updatedMetaBlob);
+    const submitBtn = document.getElementById('submitBtn');
+    if(submitBtn) submitBtn.disabled = !state.audioUploadConfirmed;
+  };
+  document.getElementById('backBtn').onclick = () => goTo(4);
+  document.getElementById('newBtn').onclick = () => {
+    clearProgress();
+    state = {
+      step: 0, doctorId: state.doctorId, visitId: "", specialty: state.specialty,
+      doctorEmail: state.doctorEmail, googleIdToken: state.googleIdToken,
+      consentGiven: false, consentTimestamp: null,
+      consultBlob: null, consultDuration: 0, soapBlob: null, soapDuration: 0,
+      qc: { audioUsable: false, soapComplete: false, noIdentifiers: false },
+      audioUploadConfirmed: false
+    };
+    render();
+  };
+  clearProgress();
+
+  const submitArea = document.getElementById('submitArea');
+  if(!sheetConfigured){
+    submitArea.innerHTML = `<div class="note" style="background:var(--amber-soft); color:#4A3B12;"><b>Spreadsheet not connected yet.</b> Ask your coordinator to finish the one-time setup — until then, please log this session's details manually.</div>`;
+    return;
+  }
+
+  submitArea.innerHTML = `<button class="btn primary" id="submitBtn" style="width:100%;" ${state.audioUploadConfirmed ? '' : 'disabled'}>Submit session details</button>`;
+  document.getElementById('submitBtn').onclick = async () => {
+    if(!state.audioUploadConfirmed){
+      alert('Please confirm you\'ve uploaded both audio files to the Drive folder before submitting.');
+      return;
+    }
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    try{
+      const response = await fetch(SHEET_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          ...metadata,
+          audioUploadConfirmed: state.audioUploadConfirmed,
+          consultFilename,
+          soapFilename
+        })
+      });
+      const result = await response.json();
+      if(result.status === 'ok'){
+        submitArea.innerHTML = `<div class="note" style="background:var(--green-soft); color:#2E4A2F;"><b>Submitted.</b> This session's details have been added to the spreadsheet.</div>`;
+      }else if(result.status === 'forbidden'){
+        submitArea.innerHTML = `<div class="note" style="background:var(--red-soft); color:#5C201E;"><b>You're not approved to submit for this project.</b> ${result.message || 'Please contact your coordinator to be added.'} <br><br><button class="link-btn" id="retryBtn">Try again</button></div>`;
+        document.getElementById('retryBtn').onclick = () => document.getElementById('submitBtn')?.click();
+      }else{
+        submitArea.innerHTML = `<div class="note" style="background:var(--red-soft); color:#5C201E;"><b>Something went wrong submitting this session.</b> <button class="link-btn" id="retryBtn">Try again</button></div>`;
+        document.getElementById('retryBtn').onclick = () => document.getElementById('submitBtn')?.click();
+      }
+    }catch(err){
+      submitArea.innerHTML = `<div class="note" style="background:var(--red-soft); color:#5C201E;"><b>Couldn't submit — check your internet connection.</b> <button class="link-btn" id="retryBtn">Try again</button></div>`;
+      document.getElementById('retryBtn').onclick = () => document.getElementById('submitBtn')?.click();
+    }
+  };
+}
+
+const SAVE_KEY = 'consultRecorderSession';
+
+function saveProgress(){
+  try{
+    const savable = {
+      step: state.step,
+      doctorId: state.doctorId,
+      visitId: state.visitId,
+      specialty: state.specialty,
+      consentGiven: state.consentGiven,
+      consentTimestamp: state.consentTimestamp,
+      qc: state.qc,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(savable));
+  }catch(err){
+  }
+}
+
+function clearProgress(){
+  try{ localStorage.removeItem(SAVE_KEY); }catch(err){}
+}
+
+function loadProgress(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(err){
+    return null;
+  }
+}
+
+function maybeOfferResume(){
+  const saved = loadProgress();
+  if(!saved || saved.step === 0) return;
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <h2>Resume your last session?</h2>
+    <p class="sub">We found saved progress from ${new Date(saved.savedAt).toLocaleString()} for visit <b>${saved.visitId || '(unnamed)'}</b>. Recordings themselves are not auto-saved, so if you had recorded audio, you'll need to record it again — but your details will be filled back in.</p>
+    <div class="actions">
+      <button class="btn ghost" id="startFreshBtn">Start a fresh session</button>
+      <button class="btn primary" id="resumeBtn">Resume this session</button>
+    </div>
+  `;
+  document.getElementById('startFreshBtn').onclick = () => { clearProgress(); render(); };
+  document.getElementById('resumeBtn').onclick = () => {
+    state.step = Math.min(saved.step, 2);
+    state.doctorId = saved.doctorId || '';
+    state.visitId = saved.visitId || '';
+    state.specialty = saved.specialty || '';
+    state.consentGiven = saved.consentGiven || false;
+    state.consentTimestamp = saved.consentTimestamp || null;
+    state.qc = saved.qc || { audioUsable:false, soapComplete:false, noIdentifiers:false };
+    render();
+  };
+}
+
+window.addEventListener('beforeunload', (e) => {
+  const hasUnsavedWork = state.step > 0 && state.step < 5;
+  if(hasUnsavedWork){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+boot();
+</script>
+</body>
+</html>
