@@ -497,8 +497,68 @@ function handleCredentialResponse(response){
   }
   state.doctorEmail = payload.email;
   state.googleIdToken = response.credential;
-  maybeOfferResume();
-  render();
+  checkAccessThenProceed();
+}
+
+function renderCheckingAccess(){
+  const panel = document.getElementById('panel');
+  document.getElementById('stepsTrack').innerHTML = '';
+  panel.innerHTML = `
+    <div class="signin-screen">
+      <h2>Checking access…</h2>
+      <p class="sub">Confirming your account is approved for this project.</p>
+    </div>
+  `;
+}
+
+function renderAccessDenied(message){
+  const panel = document.getElementById('panel');
+  document.getElementById('stepsTrack').innerHTML = '';
+  panel.innerHTML = `
+    <div class="signin-screen">
+      <h2>You're not approved yet</h2>
+      <p class="sub">${message || "This Google account isn't approved for this project."} Please contact your coordinator to be added, then try again — you won't be able to record or submit until then.</p>
+      <button class="btn primary" id="signOutRetryBtn">Sign out and try a different account</button>
+    </div>
+  `;
+  document.getElementById('signOutRetryBtn').onclick = signOut;
+}
+
+// Runs right after sign-in, before the doctor sees any session steps, so an
+// unapproved account is turned away immediately instead of after they've
+// already spent time recording.
+async function checkAccessThenProceed(){
+  if(SHEET_WEBHOOK_URL.trim().length === 0){
+    // No spreadsheet connected yet — nothing to check against, so let them through.
+    maybeOfferResume();
+    render();
+    return;
+  }
+  renderCheckingAccess();
+  try{
+    const response = await fetch(SHEET_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ googleIdToken: state.googleIdToken, checkOnly: true })
+    });
+    const result = await response.json();
+    if(result.status === 'ok'){
+      maybeOfferResume();
+      render();
+    }else{
+      renderAccessDenied(result.message);
+    }
+  }catch(err){
+    const panel = document.getElementById('panel');
+    panel.innerHTML = `
+      <div class="signin-screen">
+        <h2>Couldn't check access</h2>
+        <p class="sub">We couldn't reach the server to confirm your access — check your internet connection and try again.</p>
+        <button class="btn primary" id="retryAccessBtn">Try again</button>
+      </div>
+    `;
+    document.getElementById('retryAccessBtn').onclick = checkAccessThenProceed;
+  }
 }
 
 function renderSignIn(){
@@ -548,6 +608,10 @@ function signOut(){
 function boot(){
   if(GOOGLE_CLIENT_ID.trim().length > 0 && !state.doctorEmail){
     renderSignIn();
+    return;
+  }
+  if(GOOGLE_CLIENT_ID.trim().length > 0 && state.doctorEmail && state.googleIdToken){
+    checkAccessThenProceed();
     return;
   }
   maybeOfferResume();
