@@ -448,9 +448,6 @@ function fmtTime(sec){
 function fixAudioDuration(audioEl){
   if(!audioEl) return;
   const trySeek = () => {
-    // Seeking past the end forces Chrome/Edge to rescan the file and settle
-    // on the real duration (whether it previously read Infinity, NaN, or a
-    // short/incorrect number), then we snap playback back to the start.
     audioEl.currentTime = 1e101;
     audioEl.addEventListener('timeupdate', function onTick(){
       audioEl.removeEventListener('timeupdate', onTick);
@@ -733,8 +730,6 @@ function renderRecord(panel, kind){
   document.getElementById('recBtn').onclick = async () => {
     const inProgress = mediaRecorder && (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused');
     if(inProgress){
-      // Final stop, whether we're actively recording or currently paused.
-      // onstop fires either way and finalizes the single combined recording.
       clearInterval(recTimerInterval);
       mediaRecorder.stop();
       return;
@@ -759,7 +754,6 @@ function renderRecord(panel, kind){
     document.getElementById('recBtn').classList.add('stop');
     document.getElementById('recBtn').title = 'Stop recording';
 
-    // Add a pause/resume button alongside the stop button
     const controls = document.getElementById('recControls');
     const pauseBtn = document.createElement('button');
     pauseBtn.className = 'rec-btn secondary';
@@ -768,8 +762,6 @@ function renderRecord(panel, kind){
     pauseBtn.textContent = '❚❚';
     pauseBtn.onclick = () => {
       if(!isPaused){
-        // Native pause: keeps the same recording/stream going, just stops
-        // capturing audio until resumed — no separate files to stitch together.
         mediaRecorder.pause();
         isPaused = true;
         clearInterval(recTimerInterval);
@@ -899,7 +891,6 @@ function renderPackage(panel){
   document.getElementById('uploadConfirm').onchange = (e) => {
     state.audioUploadConfirmed = e.target.checked;
     metadata.audioUploadConfirmed = state.audioUploadConfirmed;
-    // Keep the downloadable metadata JSON in sync with the latest checkbox state.
     const updatedMetaBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
     const metaLink = document.querySelector(`a[download="${base}_metadata.json"]`);
     if(metaLink) metaLink.href = URL.createObjectURL(updatedMetaBlob);
@@ -937,9 +928,8 @@ function renderPackage(panel){
     btn.disabled = true;
     btn.textContent = 'Submitting…';
     try{
-      await fetch(SHEET_WEBHOOK_URL, {
+      const response = await fetch(SHEET_WEBHOOK_URL, {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           ...metadata,
@@ -948,10 +938,16 @@ function renderPackage(panel){
           soapFilename
         })
       });
-      // mode: 'no-cors' means we can't read the response, so we confirm
-      // optimistically — this matches the standard pattern for this kind
-      // of lightweight Google Sheets integration.
-      submitArea.innerHTML = `<div class="note" style="background:var(--green-soft); color:#2E4A2F;"><b>Submitted.</b> This session's details have been added to the spreadsheet.</div>`;
+      const result = await response.json();
+      if(result.status === 'ok'){
+        submitArea.innerHTML = `<div class="note" style="background:var(--green-soft); color:#2E4A2F;"><b>Submitted.</b> This session's details have been added to the spreadsheet.</div>`;
+      }else if(result.status === 'forbidden'){
+        submitArea.innerHTML = `<div class="note" style="background:var(--red-soft); color:#5C201E;"><b>You're not approved to submit for this project.</b> ${result.message || 'Please contact your coordinator to be added.'} <br><br><button class="link-btn" id="retryBtn">Try again</button></div>`;
+        document.getElementById('retryBtn').onclick = () => document.getElementById('submitBtn')?.click();
+      }else{
+        submitArea.innerHTML = `<div class="note" style="background:var(--red-soft); color:#5C201E;"><b>Something went wrong submitting this session.</b> <button class="link-btn" id="retryBtn">Try again</button></div>`;
+        document.getElementById('retryBtn').onclick = () => document.getElementById('submitBtn')?.click();
+      }
     }catch(err){
       submitArea.innerHTML = `<div class="note" style="background:var(--red-soft); color:#5C201E;"><b>Couldn't submit — check your internet connection.</b> <button class="link-btn" id="retryBtn">Try again</button></div>`;
       document.getElementById('retryBtn').onclick = () => document.getElementById('submitBtn')?.click();
@@ -975,7 +971,6 @@ function saveProgress(){
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(savable));
   }catch(err){
-    // Storage unavailable (e.g. some browsers block it for local files) — fail silently, no autosave this session.
   }
 }
 
@@ -1006,7 +1001,7 @@ function maybeOfferResume(){
   `;
   document.getElementById('startFreshBtn').onclick = () => { clearProgress(); render(); };
   document.getElementById('resumeBtn').onclick = () => {
-    state.step = Math.min(saved.step, 2); // never resume mid-recording steps with lost audio; land on setup or consent at latest
+    state.step = Math.min(saved.step, 2);
     state.doctorId = saved.doctorId || '';
     state.visitId = saved.visitId || '';
     state.specialty = saved.specialty || '';
