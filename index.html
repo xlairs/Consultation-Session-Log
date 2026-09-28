@@ -135,6 +135,27 @@
     margin-top:-14px;
     margin-bottom:18px;
   }
+  .specialty-help{
+    font-size:0.8rem;
+    color:var(--ink-soft);
+    margin-top:-10px;
+    margin-bottom:18px;
+    line-height:1.5;
+  }
+  .specialty-help summary{cursor:pointer; color:var(--teal); font-weight:500;}
+  .specialty-help ul{margin:8px 0 0; padding-left:18px;}
+  .specialty-help li{margin-bottom:6px;}
+  .specialty-help b{color:var(--ink);}
+  .specialty-selected{
+    background:#F1F0EC;
+    border-radius:6px;
+    padding:10px 12px;
+    margin-top:-10px;
+    margin-bottom:18px;
+    font-size:0.82rem;
+    line-height:1.5;
+    color:var(--ink-soft);
+  }
 
   .consent-box{
     background:var(--amber-soft);
@@ -403,6 +424,7 @@ let state = {
   doctorId: "",
   visitId: "",
   specialty: "",
+  specialtyOther: "",
   doctorEmail: "",
   googleIdToken: "",
   consentGiven: false,
@@ -619,6 +641,25 @@ function boot(){
 }
 
 // ---------- Step 0: Setup ----------
+const SPECIALTY_INFO = {
+  "General practice": "First-contact and family medicine: everyday health problems, check-ups and follow-up of long-term conditions.",
+  "Pediatrics": "Children and adolescents. Only record if guardian consent is allowed for this project; check with your coordinator first.",
+  "Internal medicine": "Adults with complex conditions or several conditions at once (for example diabetes together with heart or kidney problems).",
+  "Dermatology": "Skin, hair and nail problems.",
+  "Psychiatry": "Mental health consultations.",
+  "Other": "Any consultation that does not fit the five above, for example cardiology, gynecology, orthopedics, ophthalmology, ENT, neurology or urology. Type your specialty in the box below, and also say it out loud at the start of the SOAP dictation (for example, \"Specialty: cardiology\")."
+};
+
+function escHtml(t){
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function specialtyLabel(){
+  return state.specialty === 'Other' && state.specialtyOther
+    ? 'Other: ' + escHtml(state.specialtyOther)
+    : state.specialty;
+}
+
 function renderSetup(panel){
   panel.innerHTML = `
     ${stepMeta()}
@@ -637,13 +678,31 @@ function renderSetup(panel){
     <label for="specialty">Specialty</label>
     <select id="specialty">
       <option value="">Select specialty</option>
-      <option ${state.specialty==='General practice'?'selected':''}>General practice</option>
-      <option ${state.specialty==='Pediatrics'?'selected':''}>Pediatrics</option>
-      <option ${state.specialty==='Internal medicine'?'selected':''}>Internal medicine</option>
-      <option ${state.specialty==='Dermatology'?'selected':''}>Dermatology</option>
-      <option ${state.specialty==='Psychiatry'?'selected':''}>Psychiatry</option>
-      <option ${state.specialty==='Other'?'selected':''}>Other</option>
+      <option value="General practice" ${state.specialty==='General practice'?'selected':''}>General practice</option>
+      <option value="Pediatrics" ${state.specialty==='Pediatrics'?'selected':''}>Pediatrics</option>
+      <option value="Internal medicine" ${state.specialty==='Internal medicine'?'selected':''}>Internal medicine</option>
+      <option value="Dermatology" ${state.specialty==='Dermatology'?'selected':''}>Dermatology</option>
+      <option value="Psychiatry" ${state.specialty==='Psychiatry'?'selected':''}>Psychiatry</option>
+      <option value="Other" ${state.specialty==='Other'?'selected':''}>Others</option>
     </select>
+    <div class="specialty-selected" id="specialtyDesc" style="display:none;"></div>
+    <div id="specialtyOtherWrap" style="display:none;">
+      <label for="specialtyOther">Your specialty</label>
+      <input type="text" id="specialtyOther" placeholder="e.g. Cardiology" value="${escHtml(state.specialtyOther || '')}">
+      <div class="field-hint">Type the specialty that best describes this consultation. Also say it out loud at the start of the SOAP dictation.</div>
+    </div>
+    <details class="specialty-help">
+      <summary>Which specialty should I choose?</summary>
+      <ul>
+        <li><b>General practice:</b> ${SPECIALTY_INFO["General practice"]}</li>
+        <li><b>Pediatrics:</b> ${SPECIALTY_INFO["Pediatrics"]}</li>
+        <li><b>Internal medicine:</b> ${SPECIALTY_INFO["Internal medicine"]}</li>
+        <li><b>Dermatology:</b> ${SPECIALTY_INFO["Dermatology"]}</li>
+        <li><b>Psychiatry:</b> ${SPECIALTY_INFO["Psychiatry"]}</li>
+        <li><b>Others:</b> ${SPECIALTY_INFO["Other"]}</li>
+      </ul>
+      <div style="margin-top:8px;">If a visit covers more than one area, choose the main reason for the visit.</div>
+    </details>
 
     <div class="note"><b>Before you continue:</b> confirm today's date is within your active consent-collection window and that this patient has not asked to be excluded from recording.</div>
 
@@ -656,12 +715,31 @@ function renderSetup(panel){
     state.doctorId = document.getElementById('doctorId').value.trim();
     state.visitId = document.getElementById('visitId').value.trim();
     state.specialty = document.getElementById('specialty').value;
+    state.specialtyOther = state.specialty === 'Other'
+      ? document.getElementById('specialtyOther').value.trim()
+      : '';
     if(!state.doctorId || !state.visitId || !state.specialty){
       alert('Please fill in doctor ID, visit ID, and specialty before continuing.');
       return;
     }
+    if(state.specialty === 'Other' && !state.specialtyOther){
+      alert('Please type your specialty in the box provided.');
+      document.getElementById('specialtyOther').focus();
+      return;
+    }
     goTo(1);
   };
+  const specSel = document.getElementById('specialty');
+  const specDesc = document.getElementById('specialtyDesc');
+  const specWrap = document.getElementById('specialtyOtherWrap');
+  const syncSpecialty = () => {
+    const v = specSel.value;
+    if(SPECIALTY_INFO[v]){ specDesc.textContent = SPECIALTY_INFO[v]; specDesc.style.display = 'block'; }
+    else { specDesc.style.display = 'none'; }
+    specWrap.style.display = v === 'Other' ? 'block' : 'none';
+  };
+  specSel.onchange = syncSpecialty;
+  syncSpecialty();
   const signOutBtn = document.getElementById('signOutBtn');
   if(signOutBtn) signOutBtn.onclick = signOut;
 }
@@ -859,7 +937,7 @@ function renderReview(panel){
     ${state.doctorEmail ? `<div class="summary-row"><span>Signed in as</span><span>${state.doctorEmail}</span></div>` : ''}
     <div class="summary-row"><span>Doctor ID</span><span>${state.doctorId}</span></div>
     <div class="summary-row"><span>Visit ID</span><span>${state.visitId}</span></div>
-    <div class="summary-row"><span>Specialty</span><span>${state.specialty}</span></div>
+    <div class="summary-row"><span>Specialty</span><span>${specialtyLabel()}</span></div>
     <div class="summary-row"><span>Consent confirmed</span><span>${state.consentTimestamp}</span></div>
     <div class="summary-row"><span>Consultation recording</span><span>${state.consultBlob ? fmtTime(state.consultDuration) : 'Missing'}</span></div>
     <div class="summary-row"><span>SOAP recording</span><span>${state.soapBlob ? fmtTime(state.soapDuration) : 'Missing'}</span></div>
@@ -901,6 +979,7 @@ function renderPackage(panel){
     googleIdToken: state.googleIdToken,
     visitId: state.visitId,
     specialty: state.specialty,
+    specialtyOther: state.specialtyOther,
     consentConfirmedAt: state.consentTimestamp,
     consultDurationSeconds: state.consultDuration,
     soapDurationSeconds: state.soapDuration,
@@ -965,7 +1044,7 @@ function renderPackage(panel){
   document.getElementById('newBtn').onclick = () => {
     clearProgress();
     state = {
-      step: 0, doctorId: state.doctorId, visitId: "", specialty: state.specialty,
+      step: 0, doctorId: state.doctorId, visitId: "", specialty: state.specialty, specialtyOther: state.specialtyOther,
       doctorEmail: state.doctorEmail, googleIdToken: state.googleIdToken,
       consentGiven: false, consentTimestamp: null,
       consultBlob: null, consultDuration: 0, soapBlob: null, soapDuration: 0,
@@ -1028,6 +1107,7 @@ function saveProgress(){
       doctorId: state.doctorId,
       visitId: state.visitId,
       specialty: state.specialty,
+      specialtyOther: state.specialtyOther,
       consentGiven: state.consentGiven,
       consentTimestamp: state.consentTimestamp,
       qc: state.qc,
@@ -1069,6 +1149,7 @@ function maybeOfferResume(){
     state.doctorId = saved.doctorId || '';
     state.visitId = saved.visitId || '';
     state.specialty = saved.specialty || '';
+    state.specialtyOther = saved.specialtyOther || '';
     state.consentGiven = saved.consentGiven || false;
     state.consentTimestamp = saved.consentTimestamp || null;
     state.qc = saved.qc || { audioUsable:false, soapComplete:false, noIdentifiers:false };
